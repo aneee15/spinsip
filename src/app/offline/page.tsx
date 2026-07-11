@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function Offline() { return <main className="min-h-dvh grid place-items-center p-6 text-center"><div><div className="logo-mark mx-auto mb-6">S</div><h1 className="font-display text-4xl font-black">Estás offline</h1><p className="mt-3 text-white/60">O jogo instalado continua disponível. Volta a tentar abrir a aplicação.</p><Link className="primary-btn mt-8 inline-flex" href="/">Tentar novamente</Link></div></main>; }

@@ -1,0 +1,210 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    color-scheme: dark;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    background: #080712;
+}
+
+body {
+    margin: 0;
+    background: #080712;
+    color: #fff;
+    font-family: var(--font-sans);
+    min-height: 100dvh;
+    overscroll-behavior: none;
+}
+
+button,
+input {
+    font: inherit;
+}
+
+button {
+    -webkit-tap-highlight-color: transparent;
+}
+
+.font-display {
+    font-family: var(--font-display);
+}
+
+.app-bg {
+    min-height: 100dvh;
+    background: radial-gradient(circle at 75% 8%, rgba(139, 92, 246, .2), transparent 29%), radial-gradient(circle at 10% 75%, rgba(255, 61, 191, .12), transparent 30%), #080712;
+    padding: calc(env(safe-area-inset-top) + 12px) max(18px, env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 16px) max(18px, env(safe-area-inset-left));
+}
+
+.glass {
+    background: linear-gradient(145deg, rgba(255, 255, 255, .085), rgba(255, 255, 255, .035));
+    border: 1px solid rgba(255, 255, 255, .1);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .25);
+    backdrop-filter: blur(20px);
+}
+
+.primary-btn {
+    min-height: 54px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    padding: 0 24px;
+    color: #fff;
+    font-weight: 800;
+    background: linear-gradient(100deg, #fd3db7, #9855f5);
+    box-shadow: 0 12px 36px rgba(255, 61, 191, .26);
+    transition: .2s;
+}
+
+.primary-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+}
+
+.primary-btn:disabled {
+    opacity: .4;
+    transform: none;
+}
+
+.secondary-btn {
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, .13);
+    border-radius: 15px;
+    padding: 0 20px;
+    font-weight: 700;
+    background: rgba(255, 255, 255, .045);
+}
+
+.icon-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: 15px;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, .06);
+    border: 1px solid rgba(255, 255, 255, .1);
+}
+
+.logo-mark {
+    width: 54px;
+    height: 54px;
+    border-radius: 17px;
+    display: grid;
+    place-items: center;
+    font: 900 27px var(--font-display);
+    background: linear-gradient(145deg, #ff3dbf, #7c45e8 60%, #36d9ff);
+    box-shadow: 0 0 32px rgba(255, 61, 191, .3);
+    transform: rotate(-5deg);
+}
+
+.field {
+    width: 100%;
+    min-height: 52px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, .13);
+    background: rgba(255, 255, 255, .055);
+    padding: 0 16px;
+    outline: none;
+}
+
+.field:focus {
+    border-color: #c46cff;
+    box-shadow: 0 0 0 3px rgba(196, 108, 255, .13);
+}
+
+.pill {
+    display: inline-flex;
+    min-height: 34px;
+    align-items: center;
+    gap: 6px;
+    padding: 0 11px;
+    border: 1px solid rgba(255, 255, 255, .1);
+    background: rgba(255, 255, 255, .06);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.wheel {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 7px solid #171528;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, .1), 0 0 55px rgba(139, 92, 246, .27), inset 0 0 40px rgba(0, 0, 0, .42);
+    overflow: hidden;
+}
+
+.wheel::after {
+    content: "";
+    position: absolute;
+    inset: 12%;
+    border-radius: 50%;
+    background: #0b0a16;
+    border: 2px solid rgba(255, 255, 255, .12);
+    box-shadow: 0 8px 40px #000;
+}
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgba(2, 2, 8, .78);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 18px;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+}
+
+.sheet {
+    width: 100%;
+    max-width: 480px;
+    border-radius: 28px;
+    padding: 24px;
+    background: #141222;
+    border: 1px solid rgba(255, 255, 255, .12);
+    box-shadow: 0 -20px 80px rgba(0, 0, 0, .55);
+    max-height: 88dvh;
+    overflow: auto;
+}
+
+@media(min-width:700px) {
+    .app-bg {
+        padding-left: 28px;
+        padding-right: 28px
+    }
+
+    .mobile-shell {
+        max-width: 520px;
+        margin: auto
+    }
+
+    .modal-backdrop {
+        align-items: center
+    }
+
+    .sheet {
+        padding: 30px
+    }
+}
+
+@media(prefers-reduced-motion:reduce) {
+
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important
+    }
+}
