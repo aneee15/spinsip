@@ -14,5 +14,7 @@ export interface Settings {
   sound: boolean;
   vibration: boolean;
   reducedMotion: boolean;
+  highContrast: boolean;
+  fontSize: "small" | "normal" | "large";
   probabilities: Record<Category, number>;
 }

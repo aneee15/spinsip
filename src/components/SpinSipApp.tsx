@@ -1,149 +1,337 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, CaretRight, Check, GearSix, HandPalm, List, Minus, Pause, PencilSimple, Plus, ShareNetwork, ShieldCheck, SpeakerHigh, SpeakerSlash, SpinnerGap, Trash, User, UsersThree, Vibrate, X } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight, CaretRight, Check, Eye, GearSix, HandPalm, List, Minus, Pause, PencilSimple, Plus, ShareNetwork, ShieldCheck, SpeakerHigh, SpeakerSlash, SpinnerGap, TextAa, Trash, User, UsersThree, Vibrate, X } from "@phosphor-icons/react";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import logo from "@/assets/logo-header.png";
 import { categoryColors, categoryLabels, challenges, drinkActions, duels, likely, questions, rules, specials } from "@/lib/content";
 import type { ActiveRule, Category, GameCard, HistoryItem, Intensity, Player, Screen, Settings } from "@/lib/types";
 
-const defaultProbabilities: Record<Category,number> = { question:25, challenge:20, drink:25, duel:8, rule:7, special:5, everyone:2, likely:5, penalty:3 };
-const defaults: Settings = { intensity: "normal", categories: ["question", "challenge", "likely", "duel", "rule", "special", "everyone", "drink", "penalty"], maxSips: 2, roundLimit: 20, sound: true, vibration: true, reducedMotion: false, probabilities: defaultProbabilities };
-const makePlayer = (name: string): Player => ({ id: crypto.randomUUID(), name, sober: false, selections: 0, shields: 0 });
+const defaultProbabilities: Record<Category, number> = { question: 0, challenge: 30, drink: 25, duel: 10, rule: 8, special: 5, everyone: 5, likely: 10, penalty: 7 };
+const defaults: Settings = { intensity: "normal", categories: ["challenge", "likely", "duel", "rule", "special", "everyone", "drink", "penalty"], maxSips: 2, roundLimit: 20, sound: true, vibration: true, reducedMotion: false, highContrast: false, fontSize: "normal", probabilities: defaultProbabilities };
+const makePlayer = (name: string): Player => ({ id: crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, name, sober: false, selections: 0, shields: 0 });
 
 function Logo({ compact = false }: { compact?: boolean }) {
-  return <Image src={logo} alt="Spin & Sip — Spin. Sip. Repeat." width={compact?120:150} height={compact?83:104} priority className="h-auto shrink-0 object-contain"/>;
+  return <Image src={logo} alt="Spin & Sip — Spin. Sip. Repeat." width={compact ? 120 : 150} height={compact ? 83 : 104} priority className="h-auto shrink-0 object-contain" />;
 }
 
 function Header({ title, back, action }: { title?: string; back?: () => void; action?: React.ReactNode }) {
-  return <header className="flex min-h-12 items-center justify-between"><div className="flex items-center gap-3">{back ? <button aria-label="Voltar" className="icon-btn" onClick={back}><ArrowLeft size={20}/></button> : <Logo compact/>}{title && <h1 className="font-display text-lg font-bold">{title}</h1>}</div>{action}</header>;
+  return <header className="flex min-h-12 items-center justify-between"><div className="flex items-center gap-3">{back ? <button aria-label="Voltar" className="icon-btn" onClick={back}><ArrowLeft size={20} /></button> : <Logo compact />}{title && <h1 className="font-display text-lg font-bold">{title}</h1>}</div>{action}</header>;
 }
 
-function Progress({ step }: { step: number }) { return <div className="mt-6 flex gap-2" aria-label={`Etapa ${step} de 3`}>{[1,2,3].map(n=><div key={n} className={`h-1.5 flex-1 rounded-full ${n<=step?"bg-gradient-to-r from-pink to-violet":"bg-white/10"}`}/>)}</div>; }
+function Progress({ step }: { step: number }) { return <div className="mt-6 flex gap-2" aria-label={`Etapa ${step} de 3`}>{[1, 2, 3].map(n => <div key={n} className={`h-1.5 flex-1 rounded-full ${n <= step ? "bg-gradient-to-r from-pink to-violet" : "bg-white/10"}`} />)}</div>; }
 
 export default function SpinSipApp() {
-  const [screen,setScreen] = useState<Screen>("home");
-  const [players,setPlayers] = useState<Player[]>([]);
-  const [settings,setSettings] = useState<Settings>(defaults);
-  const [round,setRound] = useState(1);
-  const [history,setHistory] = useState<HistoryItem[]>([]);
-  const [activeRules,setActiveRules] = useState<ActiveRule[]>([]);
-  const [stats,setStats] = useState({ questions:0,challenges:0,rules:0,duels:0 });
-  const [responsibleSeen,setResponsibleSeen] = useState(false);
+  const [screen, setScreen] = useState<Screen>("home");
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [settings, setSettings] = useState<Settings>(defaults);
+  const [round, setRound] = useState(1);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [activeRules, setActiveRules] = useState<ActiveRule[]>([]);
+  const [stats, setStats] = useState({ questions: 0, challenges: 0, rules: 0, duels: 0 });
+  const [responsibleSeen, setResponsibleSeen] = useState(false);
 
-  useEffect(()=>{
-    const raw=localStorage.getItem("spin-sip-state");
-    if(raw) try { const s=JSON.parse(raw); if(s.players?.length) setPlayers(s.players); if(s.settings) setSettings({...defaults,...s.settings,probabilities:{...defaultProbabilities,...s.settings.probabilities}}); } catch {}
-    setResponsibleSeen(localStorage.getItem("spin-sip-responsible")==="yes");
-    if("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(()=>{});
-  },[]);
-  useEffect(()=>{ localStorage.setItem("spin-sip-state",JSON.stringify({players,settings})); },[players,settings]);
+  useEffect(() => {
+    const raw = localStorage.getItem("spin-sip-state");
+    if (raw) try { const s = JSON.parse(raw); if (s.players?.length) setPlayers(s.players); if (s.settings) setSettings({ ...defaults, ...s.settings, probabilities: { ...defaultProbabilities, ...s.settings.probabilities } }); } catch { }
+    setResponsibleSeen(localStorage.getItem("spin-sip-responsible") === "yes");
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => { });
+  }, []);
+  useEffect(() => { localStorage.setItem("spin-sip-state", JSON.stringify({ players, settings })); }, [players, settings]);
 
-  const resetGame=(keepPlayers=true)=>{setRound(1);setHistory([]);setActiveRules([]);setStats({questions:0,challenges:0,rules:0,duels:0});if(!keepPlayers)setPlayers([]);};
-  const start=()=>{resetGame();setScreen("game");};
-  const goHome=()=>{resetGame(false);setScreen("home");};
+  const resetGame = (keepPlayers = true) => { setRound(1); setHistory([]); setActiveRules([]); setStats({ questions: 0, challenges: 0, rules: 0, duels: 0 }); if (!keepPlayers) setPlayers([]); };
+  const start = () => { resetGame(); setScreen("game"); };
+  const goHome = () => { resetGame(false); setScreen("home"); };
 
   return <main className="app-bg"><div className="mobile-shell">
     <AnimatePresence mode="wait">
-      {screen==="home"&&<Home key="home" onStart={()=>setScreen("players")} responsibleSeen={responsibleSeen} acceptResponsible={()=>{localStorage.setItem("spin-sip-responsible","yes");setResponsibleSeen(true)}}/>}
-      {screen==="players"&&<Players key="players" players={players} setPlayers={setPlayers} back={()=>setScreen("home")} next={()=>setScreen("setup")}/>} 
-      {screen==="setup"&&<Setup key="setup" settings={settings} setSettings={setSettings} back={()=>setScreen("players")} start={start}/>} 
-      {screen==="game"&&<Game key="game" players={players} setPlayers={setPlayers} settings={settings} setSettings={setSettings} round={round} setRound={setRound} history={history} setHistory={setHistory} activeRules={activeRules} setActiveRules={setActiveRules} stats={stats} setStats={setStats} finish={()=>setScreen("summary")} home={goHome}/>} 
-      {screen==="summary"&&<Summary key="summary" players={players} round={round} stats={stats} again={()=>{resetGame();setScreen("game")}} edit={()=>setScreen("players")} home={goHome}/>} 
+      {screen === "home" && <Home key="home" onStart={() => setScreen("players")} responsibleSeen={responsibleSeen} acceptResponsible={() => { localStorage.setItem("spin-sip-responsible", "yes"); setResponsibleSeen(true) }} />}
+      {screen === "players" && <Players key="players" players={players} setPlayers={setPlayers} back={() => setScreen("home")} next={() => setScreen("setup")} />}
+      {screen === "setup" && <Setup key="setup" settings={settings} setSettings={setSettings} back={() => setScreen("players")} start={start} />}
+      {screen === "game" && <Game key="game" players={players} setPlayers={setPlayers} settings={settings} setSettings={setSettings} round={round} setRound={setRound} history={history} setHistory={setHistory} activeRules={activeRules} setActiveRules={setActiveRules} stats={stats} setStats={setStats} finish={() => setScreen("summary")} home={goHome} />}
+      {screen === "summary" && <Summary key="summary" players={players} round={round} stats={stats} again={() => { resetGame(); setScreen("game") }} edit={() => setScreen("players")} home={goHome} />}
     </AnimatePresence>
   </div></main>;
 }
 
-function Home({onStart,responsibleSeen,acceptResponsible}:{onStart:()=>void;responsibleSeen:boolean;acceptResponsible:()=>void}){
-  const [info,setInfo]=useState<"how"|"install"|"responsible"|null>(responsibleSeen?null:"responsible");
-  return <motion.section initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex min-h-[calc(100dvh-40px)] flex-col">
-    <nav className="flex items-center justify-between"><Logo/><span className="pill"><span className="h-1.5 w-1.5 rounded-full bg-lime"/>18+</span></nav>
-    <div className="relative my-auto py-10"><div className="absolute left-1/2 top-1/2 -z-0 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet/20 blur-3xl"/><div className="relative z-10 mb-7"><span className="pill mb-5 border-pink/20 text-pink"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-pink"/> A festa começa aqui</span><h1 className="hero-title font-display text-[clamp(3.3rem,16vw,5.2rem)] font-black leading-[.89] tracking-[-.065em]">Gira.<br/><span className="bg-gradient-to-r from-pink via-violet to-electric bg-clip-text text-transparent">Bebe.</span><br/>Repete.</h1><p className="mt-5 max-w-sm text-base leading-relaxed text-white/55">Perguntas, desafios e caos na medida certa. Sem contas, sem complicações.</p></div>
+function Home({ onStart, responsibleSeen, acceptResponsible }: { onStart: () => void; responsibleSeen: boolean; acceptResponsible: () => void }) {
+  const [info, setInfo] = useState<"how" | "install" | "responsible" | null>(responsibleSeen ? null : "responsible");
+  return <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex min-h-[calc(100dvh-40px)] flex-col">
+    <nav className="flex items-center justify-between"><Logo /><span className="pill"><span className="h-1.5 w-1.5 rounded-full bg-lime" />18+</span></nav>
+    <div className="relative my-auto py-10"><div className="absolute left-1/2 top-1/2 -z-0 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-violet/20 blur-3xl" /><div className="relative z-10 mb-7"><span className="pill mb-5 border-pink/20 text-pink"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-pink" /> A festa começa aqui</span><h1 className="hero-title font-display text-[clamp(3.3rem,16vw,5.2rem)] font-black leading-[.89] tracking-[-.065em]">Gira.<br /><span className="bg-gradient-to-r from-pink via-violet to-electric bg-clip-text text-transparent">Bebe.</span><br />Repete.</h1><p className="mt-5 max-w-sm text-base leading-relaxed text-white/55">Perguntas, desafios e caos na medida certa. Sem contas, sem complicações.</p></div>
       <div className="feature-strip relative z-10 mb-6"><div className="feature-item"><strong>2–20</strong>jogadores</div><div className="feature-item"><strong>Offline</strong>sempre pronto</div><div className="feature-item"><strong>100%</strong>personalizável</div></div>
-      <div className="relative z-10 space-y-3"><button className="primary-btn flex w-full gap-2 text-base" onClick={onStart}>Começar a jogar <ArrowRight size={19} weight="bold"/></button><button className="secondary-btn w-full" onClick={()=>setInfo("how")}>Como jogar</button><button className="mx-auto flex min-h-11 items-center gap-2 px-4 text-sm font-bold text-white/55" onClick={()=>setInfo("install")}><Plus/> Instalar aplicação</button></div>
+      <div className="relative z-10 space-y-3"><button className="primary-btn flex w-full gap-2 text-base" onClick={onStart}>Começar a jogar <ArrowRight size={19} weight="bold" /></button><button className="secondary-btn w-full" onClick={() => setInfo("how")}>Como jogar</button><button className="mx-auto flex min-h-11 items-center gap-2 px-4 text-sm font-bold text-white/55" onClick={() => setInfo("install")}><Plus /> Instalar aplicação</button></div>
     </div>
-    <footer className="text-center text-[11px] leading-relaxed text-white/35">Exclusivo para maiores de 18 anos.<br/>Bebe com moderação. Se conduzires, não bebas.</footer>
-    <InfoModal type={info} close={()=>setInfo(null)} accept={acceptResponsible}/>
+    <footer className="text-center text-[11px] leading-relaxed text-white/35">Exclusivo para maiores de 18 anos.<br />Bebe com moderação. Se conduzires, não bebas.</footer>
+    <InfoModal type={info} close={() => setInfo(null)} accept={acceptResponsible} />
   </motion.section>
 }
 
-function InfoModal({type,close,accept}:{type:"how"|"install"|"responsible"|null;close:()=>void;accept:()=>void}){
-  return <AnimatePresence>{type&&<motion.div className="modal-backdrop" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} role="dialog" aria-modal="true"><motion.div className="sheet" initial={{y:30,opacity:0}} animate={{y:0,opacity:1}} exit={{y:30,opacity:0}}><div className="flex justify-between gap-3"><div className="logo-mark !h-11 !w-11 !rounded-xl !text-xl">S</div>{type!=="responsible"&&<button aria-label="Fechar" className="icon-btn" onClick={close}><X/></button>}</div>
-    {type==="responsible"&&<><h2 className="mt-6 font-display text-2xl font-black">Antes de começar</h2><p className="mt-3 text-sm leading-relaxed text-white/65">O Spin & Sip destina-se exclusivamente a maiores de 18 anos. Ninguém deve sentir-se obrigado a beber. Qualquer ação pode ser substituída por um desafio ou bebida sem álcool. Bebe com moderação e nunca conduzas depois de consumir álcool.</p><button className="primary-btn mt-6 flex w-full" onClick={()=>{accept();close()}}>Entendi e tenho mais de 18 anos</button></>}
-    {type==="how"&&<><h2 className="mt-6 font-display text-2xl font-black">Como jogar</h2><div className="mt-5 space-y-4">{["Adiciona entre 2 e 20 jogadores.","Escolhe a intensidade e as categorias.","Gira a roleta e cumpre a carta — ou salta, sem penalização."].map((x,i)=><div className="flex gap-3" key={x}><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-violet/20 text-xs font-black text-violet-200">{i+1}</span><p className="text-sm text-white/65">{x}</p></div>)}</div></>}
-    {type==="install"&&<><h2 className="mt-6 font-display text-2xl font-black">Leva a festa contigo</h2><p className="mt-2 text-sm text-white/50">No iPhone:</p><ol className="mt-5 space-y-4">{["Abre este site no Safari.","Toca no botão Partilhar.","Escolhe “Adicionar ao ecrã principal”."].map((x,i)=><li className="flex gap-3" key={x}><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-pink/15 text-xs font-black text-pink">{i+1}</span><span className="text-sm text-white/70">{x}</span></li>)}</ol></>}
+function InfoModal({ type, close, accept }: { type: "how" | "install" | "responsible" | null; close: () => void; accept: () => void }) {
+  return <AnimatePresence>{type && <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-modal="true"><motion.div className="sheet" initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }}><div className="flex justify-between gap-3"><div className="logo-mark !h-11 !w-11 !rounded-xl !text-xl">S</div>{type !== "responsible" && <button aria-label="Fechar" className="icon-btn" onClick={close}><X /></button>}</div>
+    {type === "responsible" && <><h2 className="mt-6 font-display text-2xl font-black">Antes de começar</h2><p className="mt-3 text-sm leading-relaxed text-white/65">O Spin & Sip destina-se exclusivamente a maiores de 18 anos. Ninguém deve sentir-se obrigado a beber. Qualquer ação pode ser substituída por um desafio ou bebida sem álcool. Bebe com moderação e nunca conduzas depois de consumir álcool.</p><button className="primary-btn mt-6 flex w-full" onClick={() => { accept(); close() }}>Entendi e tenho mais de 18 anos</button></>}
+    {type === "how" && <><h2 className="mt-6 font-display text-2xl font-black">Como jogar</h2><div className="mt-5 space-y-4">{["Adiciona entre 2 e 20 jogadores.", "Escolhe a intensidade e as categorias.", "Gira a roleta e cumpre a carta — ou salta, sem penalização."].map((x, i) => <div className="flex gap-3" key={x}><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-violet/20 text-xs font-black text-violet-200">{i + 1}</span><p className="text-sm text-white/65">{x}</p></div>)}</div></>}
+    {type === "install" && <><h2 className="mt-6 font-display text-2xl font-black">Leva a festa contigo</h2><p className="mt-2 text-sm text-white/50">No iPhone:</p><ol className="mt-5 space-y-4">{["Abre este site no Safari.", "Toca no botão Partilhar.", "Escolhe “Adicionar ao ecrã principal”."].map((x, i) => <li className="flex gap-3" key={x}><span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-pink/15 text-xs font-black text-pink">{i + 1}</span><span className="text-sm text-white/70">{x}</span></li>)}</ol></>}
   </motion.div></motion.div>}</AnimatePresence>;
 }
 
-function Players({players,setPlayers,back,next}:{players:Player[];setPlayers:React.Dispatch<React.SetStateAction<Player[]>>;back:()=>void;next:()=>void}){
-  const [name,setName]=useState(""); const [editing,setEditing]=useState<string|null>(null);
-  const add=()=>{const n=name.trim();if(n&&players.length<20&&!players.some(p=>p.name.toLowerCase()===n.toLowerCase())){setPlayers(p=>[...p,makePlayer(n)]);setName("")}};
-  return <motion.section initial={{x:20,opacity:0}} animate={{x:0,opacity:1}} exit={{x:-20,opacity:0}} className="flex min-h-[calc(100dvh-40px)] flex-col"><Header title="Jogadores" back={back}/><Progress step={1}/><div className="mt-7"><p className="text-sm font-semibold text-pink">ETAPA 1</p><h2 className="mt-1 font-display text-3xl font-black">Quem vai jogar?</h2><p className="mt-2 text-sm text-white/50">Adiciona pelo menos 2 jogadores.</p></div>
-    <form className="mt-6 flex gap-2" onSubmit={e=>{e.preventDefault();add()}}><input aria-label="Nome do jogador" className="field" maxLength={18} placeholder="Nome do jogador" value={name} onChange={e=>setName(e.target.value)}/><button aria-label="Adicionar jogador" className="icon-btn !h-[52px] !w-[52px] shrink-0 bg-pink text-white" disabled={!name.trim()||players.length>=20}><Plus size={21} weight="bold"/></button></form>
-    <div className="mt-6 flex items-center justify-between"><span className="text-sm font-bold">Jogadores</span><span className="text-xs text-white/40">{players.length}/20</span></div><div className="mt-3 flex-1 space-y-2 overflow-auto pb-5">{players.length===0&&<div className="glass rounded-2xl p-8 text-center text-sm text-white/40"><UsersThree className="mx-auto mb-3" size={30}/>A lista ainda está vazia.</div>}{players.map((p,i)=><div key={p.id} className="glass flex min-h-16 items-center gap-3 rounded-2xl px-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl font-display font-black" style={{background:`${["#ff3dbf","#8b5cf6","#36d9ff","#ff8a3d"][i%4]}25`,color:["#ff7bd0","#b894ff","#78e7ff","#ffae78"][i%4]}}>{p.name[0]?.toUpperCase()}</div>{editing===p.id?<input autoFocus className="field !min-h-10 flex-1" value={p.name} onChange={e=>setPlayers(ps=>ps.map(x=>x.id===p.id?{...x,name:e.target.value}:x))} onBlur={()=>setEditing(null)} onKeyDown={e=>e.key==="Enter"&&setEditing(null)}/>:<div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{p.name}</p><label className="mt-1 flex cursor-pointer items-center gap-2 text-[11px] text-white/45"><input type="checkbox" checked={p.sober} onChange={()=>setPlayers(ps=>ps.map(x=>x.id===p.id?{...x,sober:!x.sober}:x))}/> Não bebo / estou a conduzir</label></div>}<button aria-label={`Editar ${p.name}`} className="p-2 text-white/45" onClick={()=>setEditing(p.id)}><PencilSimple/></button><button aria-label={`Remover ${p.name}`} className="p-2 text-white/35 hover:text-pink" onClick={()=>setPlayers(ps=>ps.filter(x=>x.id!==p.id))}><Trash/></button></div>)}</div>
-    <button className="primary-btn flex w-full gap-2" disabled={players.length<2} onClick={next}>Continuar <CaretRight/></button>
+function Players({ players, setPlayers, back, next }: { players: Player[]; setPlayers: React.Dispatch<React.SetStateAction<Player[]>>; back: () => void; next: () => void }) {
+  const [name, setName] = useState(""); const [editing, setEditing] = useState<string | null>(null);
+  const add = () => { const n = name.trim(); if (n && players.length < 20 && !players.some(p => p.name.toLowerCase() === n.toLowerCase())) { setPlayers(p => [...p, makePlayer(n)]); setName("") } };
+  return <motion.section initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="flex min-h-[calc(100dvh-40px)] flex-col"><Header title="Jogadores" back={back} /><Progress step={1} /><div className="mt-7"><p className="text-sm font-semibold text-pink">ETAPA 1</p><h2 className="mt-1 font-display text-3xl font-black">Quem vai jogar?</h2><p className="mt-2 text-sm text-white/50">Adiciona pelo menos 2 jogadores.</p></div>
+    <form className="mt-6 flex gap-2" onSubmit={e => { e.preventDefault(); add() }}><input aria-label="Nome do jogador" className="field" maxLength={18} placeholder="Nome do jogador" value={name} onChange={e => setName(e.target.value)} /><button aria-label="Adicionar jogador" className="icon-btn !h-[52px] !w-[52px] shrink-0 bg-pink text-white" disabled={!name.trim() || players.length >= 20}><Plus size={21} weight="bold" /></button></form>
+    <div className="mt-6 flex items-center justify-between"><span className="text-sm font-bold">Jogadores</span><span className="text-xs text-white/40">{players.length}/20</span></div><div className="mt-3 flex-1 space-y-2 overflow-auto pb-5">{players.length === 0 && <div className="glass rounded-2xl p-8 text-center text-sm text-white/40"><UsersThree className="mx-auto mb-3" size={30} />A lista ainda está vazia.</div>}{players.map((p, i) => <div key={p.id} className="glass flex min-h-16 items-center gap-3 rounded-2xl px-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl font-display font-black" style={{ background: `${["#ff3dbf", "#8b5cf6", "#36d9ff", "#ff8a3d"][i % 4]}25`, color: ["#ff7bd0", "#b894ff", "#78e7ff", "#ffae78"][i % 4] }}>{p.name[0]?.toUpperCase()}</div>{editing === p.id ? <input autoFocus className="field !min-h-10 flex-1" value={p.name} onChange={e => setPlayers(ps => ps.map(x => x.id === p.id ? { ...x, name: e.target.value } : x))} onBlur={() => setEditing(null)} onKeyDown={e => e.key === "Enter" && setEditing(null)} /> : <div className="min-w-0 flex-1"><p className="truncate text-sm font-bold">{p.name}</p><label className="mt-1 flex cursor-pointer items-center gap-2 text-[11px] text-white/45"><input type="checkbox" checked={p.sober} onChange={() => setPlayers(ps => ps.map(x => x.id === p.id ? { ...x, sober: !x.sober } : x))} /> Não bebo / estou a conduzir</label></div>}<button aria-label={`Editar ${p.name}`} className="p-2 text-white/45" onClick={() => setEditing(p.id)}><PencilSimple /></button><button aria-label={`Remover ${p.name}`} className="p-2 text-white/35 hover:text-pink" onClick={() => setPlayers(ps => ps.filter(x => x.id !== p.id))}><Trash /></button></div>)}</div>
+    <button className="primary-btn flex w-full gap-2" disabled={players.length < 2} onClick={next}>Continuar <CaretRight /></button>
   </motion.section>;
 }
 
-function Setup({settings,setSettings,back,start}:{settings:Settings;setSettings:React.Dispatch<React.SetStateAction<Settings>>;back:()=>void;start:()=>void}){
-  const intensities:{id:Intensity;name:string;desc:string;sips:number}[]=[{id:"light",name:"Leve",desc:"Tranquilo e descontraído",sips:1},{id:"normal",name:"Normal",desc:"O equilíbrio ideal",sips:2},{id:"chaos",name:"Caótico",desc:"Mais duelos e surpresas",sips:3},{id:"custom",name:"Personalizado",desc:"Faz à tua maneira",sips:settings.maxSips}];
-  const cats=(Object.keys(categoryLabels) as Category[]).filter(c=>c!=="drink");
-  const probabilityCategories=Object.keys(categoryLabels) as Category[];
-  const probabilityTotal=probabilityCategories.reduce((sum,c)=>sum+(settings.probabilities[c]||0),0);
-  const setProbability=(category:Category,value:number)=>setSettings(s=>{
-    const safe=Math.max(0,Math.min(100,Number.isFinite(value)?value:0));
-    const categories=safe>0?[...new Set([...s.categories,category])]:s.categories.filter(c=>c!==category);
-    return {...s,probabilities:{...s.probabilities,[category]:safe},categories};
+function Setup({ settings, setSettings, back, start }: { settings: Settings; setSettings: React.Dispatch<React.SetStateAction<Settings>>; back: () => void; start: () => void }) {
+  const intensities: { id: Intensity; name: string; desc: string; sips: number }[] = [{ id: "light", name: "Leve", desc: "Tranquilo e descontraído", sips: 1 }, { id: "normal", name: "Normal", desc: "O equilíbrio ideal", sips: 2 }, { id: "chaos", name: "Caótico", desc: "Mais duelos e surpresas", sips: 3 }, { id: "custom", name: "Personalizado", desc: "Faz à tua maneira", sips: settings.maxSips }];
+  const cats = (Object.keys(categoryLabels) as Category[]).filter(c => c !== "drink");
+  const probabilityCategories = Object.keys(categoryLabels) as Category[];
+  const probabilityTotal = probabilityCategories.reduce((sum, c) => sum + (settings.probabilities[c] || 0), 0);
+  const setProbability = (category: Category, value: number) => setSettings(s => {
+    const safe = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
+    const categories = safe > 0 ? [...new Set([...s.categories, category])] : s.categories.filter(c => c !== category);
+    return { ...s, probabilities: { ...s.probabilities, [category]: safe }, categories };
   });
-  const chooseIntensity=(x:typeof intensities[number])=>setSettings(s=>({...s,intensity:x.id,maxSips:x.sips,categories:x.id==="light"?["question","challenge","likely","everyone"]:x.id==="chaos"?["question","challenge","duel","rule","special","everyone","drink","penalty"]:s.categories}));
-  return <motion.section initial={{x:20,opacity:0}} animate={{x:0,opacity:1}} exit={{x:-20,opacity:0}} className="pb-2"><Header title="Configurar jogo" back={back}/><Progress step={2}/><div className="mt-7"><p className="text-sm font-semibold text-pink">ETAPA 2</p><h2 className="mt-1 font-display text-3xl font-black">Qual é a energia?</h2></div><div className="mt-5 grid grid-cols-2 gap-3">{intensities.map(x=><button key={x.id} onClick={()=>chooseIntensity(x)} className={`min-h-28 rounded-2xl border p-4 text-left transition ${settings.intensity===x.id?"border-pink bg-pink/10 shadow-neon":"border-white/10 bg-white/[.035]"}`}><div className="flex justify-between"><span className="font-display font-bold">{x.name}</span>{settings.intensity===x.id&&<Check className="text-pink" weight="bold"/>}</div><p className="mt-2 text-xs leading-relaxed text-white/45">{x.desc}</p></button>)}</div>
-    <div className="mt-7 flex items-end justify-between"><div><p className="text-sm font-semibold text-pink">ETAPA 3</p><h2 className="mt-1 font-display text-2xl font-black">Escolhe as categorias</h2></div><button className="text-xs font-bold text-white/45" onClick={()=>setSettings(s=>({...s,categories:[...cats,"drink"]}))}>Todas</button></div><div className="mt-4 grid grid-cols-2 gap-2">{cats.map(c=>{const on=settings.categories.includes(c);return <button key={c} onClick={()=>setSettings(s=>({...s,categories:on?s.categories.filter(x=>x!==c):[...s.categories,c]}))} className={`flex min-h-[52px] items-center gap-2 rounded-xl border px-3 text-left text-xs font-bold ${on?"border-white/20 bg-white/10":"border-white/5 bg-white/[.025] text-white/35"}`}><span className="h-2.5 w-2.5 rounded-full" style={{background:on?categoryColors[c]:"#555"}}/>{categoryLabels[c]}</button>})}</div>
-    {settings.intensity==="custom"&&<div className="glass mt-5 rounded-2xl p-4"><div className="flex items-center justify-between"><div><p className="text-sm font-bold">Probabilidades</p><p className="mt-1 text-[11px] text-white/40">Define a percentagem de cada tipo de carta.</p></div><span className={`pill ${probabilityTotal===100?"border-lime/30 text-lime":"border-pink/30 text-pink"}`}>{probabilityTotal}%</span></div><div className="mt-4 space-y-3">{probabilityCategories.map(c=><label key={c} className="flex items-center gap-3"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{background:categoryColors[c]}}/><span className="min-w-0 flex-1 truncate text-xs font-semibold">{categoryLabels[c]}</span><input aria-label={`Percentagem de ${categoryLabels[c]}`} className="h-10 w-20 rounded-xl border border-white/10 bg-white/[.06] px-2 text-right text-sm font-bold outline-none focus:border-pink" type="number" min="0" max="100" value={settings.probabilities[c]} onChange={e=>setProbability(c,Number(e.target.value))}/><span className="w-4 text-xs text-white/35">%</span></label>)}</div>{probabilityTotal!==100&&<p className="mt-4 rounded-xl bg-pink/10 p-3 text-xs text-pink">O total tem de ser exatamente 100% para iniciar o jogo.</p>}<p className="mt-3 text-[11px] leading-relaxed text-white/35">Um penálti pode sempre ser trocado por um desafio e nunca se aplica a jogadores no modo sem álcool.</p></div>}
-    <div className="glass mt-5 rounded-2xl p-4"><div className="flex items-center justify-between"><div><span className="text-sm font-bold">Máximo de goles</span><p className="mt-1 text-[11px] text-white/35">Entre 1 e 10 por carta</p></div><div className="flex items-center gap-3"><button className="icon-btn !h-9 !w-9" onClick={()=>setSettings(s=>({...s,maxSips:Math.max(1,s.maxSips-1)}))}><Minus/></button><b>{settings.maxSips}</b><button className="icon-btn !h-9 !w-9" onClick={()=>setSettings(s=>({...s,maxSips:Math.min(10,s.maxSips+1)}))}><Plus/></button></div></div><div className="my-4 h-px bg-white/10"/><label className="flex items-center justify-between text-sm font-bold">Duração<select className="rounded-lg bg-white/10 p-2 text-xs outline-none" value={settings.roundLimit} onChange={e=>setSettings(s=>({...s,roundLimit:Number(e.target.value)}))}><option value={10}>10 rondas</option><option value={20}>20 rondas</option><option value={30}>30 rondas</option><option value={0}>Sem limite</option></select></label></div>
-    <button className="primary-btn mt-6 flex w-full gap-2" disabled={settings.categories.length===0||(settings.intensity==="custom"&&probabilityTotal!==100)} onClick={start}>Iniciar jogo <SpinnerGap size={20}/></button>
+  const chooseIntensity = (x: typeof intensities[number]) => setSettings(s => ({ ...s, intensity: x.id, maxSips: x.sips, categories: x.id === "light" ? ["challenge", "likely", "everyone"] : x.id === "chaos" ? ["challenge", "duel", "rule", "special", "everyone", "drink", "penalty"] : s.categories }));
+  return <motion.section initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="pb-2"><Header title="Configurar jogo" back={back} /><Progress step={2} /><div className="mt-7"><p className="text-sm font-semibold text-pink">ETAPA 2</p><h2 className="mt-1 font-display text-3xl font-black">Qual é a energia?</h2></div><div className="mt-5 grid grid-cols-2 gap-3">{intensities.map(x => <button key={x.id} onClick={() => chooseIntensity(x)} className={`min-h-28 rounded-2xl border p-4 text-left transition ${settings.intensity === x.id ? "border-pink bg-pink/10 shadow-neon" : "border-white/10 bg-white/[.035]"}`}><div className="flex justify-between"><span className="font-display font-bold">{x.name}</span>{settings.intensity === x.id && <Check className="text-pink" weight="bold" />}</div><p className="mt-2 text-xs leading-relaxed text-white/45">{x.desc}</p></button>)}</div>
+    <div className="mt-7 flex items-end justify-between"><div><p className="text-sm font-semibold text-pink">ETAPA 3</p><h2 className="mt-1 font-display text-2xl font-black">Escolhe as categorias</h2></div><button className="text-xs font-bold text-white/45" onClick={() => setSettings(s => ({ ...s, categories: [...cats, "drink"] }))}>Todas</button></div><div className="mt-4 grid grid-cols-2 gap-2">{cats.map(c => { const on = settings.categories.includes(c); return <button key={c} onClick={() => setSettings(s => ({ ...s, categories: on ? s.categories.filter(x => x !== c) : [...s.categories, c] }))} className={`flex min-h-[52px] items-center gap-2 rounded-xl border px-3 text-left text-xs font-bold ${on ? "border-white/20 bg-white/10" : "border-white/5 bg-white/[.025] text-white/35"}`}><span className="h-2.5 w-2.5 rounded-full" style={{ background: on ? categoryColors[c] : "#555" }} />{categoryLabels[c]}</button> })}</div>
+    {settings.intensity === "custom" && <div className="glass mt-5 rounded-2xl p-4"><div className="flex items-center justify-between"><div><p className="text-sm font-bold">Probabilidades</p><p className="mt-1 text-[11px] text-white/40">Define a percentagem de cada tipo de carta.</p></div><span className={`pill ${probabilityTotal === 100 ? "border-lime/30 text-lime" : "border-pink/30 text-pink"}`}>{probabilityTotal}%</span></div><div className="mt-4 space-y-3">{probabilityCategories.map(c => <label key={c} className="flex items-center gap-3"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: categoryColors[c] }} /><span className="min-w-0 flex-1 truncate text-xs font-semibold">{categoryLabels[c]}</span><input aria-label={`Percentagem de ${categoryLabels[c]}`} className="h-10 w-20 rounded-xl border border-white/10 bg-white/[.06] px-2 text-right text-sm font-bold outline-none focus:border-pink" type="number" min="0" max="100" value={settings.probabilities[c]} onChange={e => setProbability(c, Number(e.target.value))} /><span className="w-4 text-xs text-white/35">%</span></label>)}</div>{probabilityTotal !== 100 && <p className="mt-4 rounded-xl bg-pink/10 p-3 text-xs text-pink">O total tem de ser exatamente 100% para iniciar o jogo.</p>}<p className="mt-3 text-[11px] leading-relaxed text-white/35">Um penálti pode sempre ser trocado por um desafio e nunca se aplica a jogadores no modo sem álcool.</p></div>}
+    <div className="glass mt-5 rounded-2xl p-4"><div className="flex items-center justify-between"><div><span className="text-sm font-bold">Máximo de goles</span><p className="mt-1 text-[11px] text-white/35">Entre 1 e 10 por carta</p></div><div className="flex items-center gap-3"><button className="icon-btn !h-9 !w-9" onClick={() => setSettings(s => ({ ...s, maxSips: Math.max(1, s.maxSips - 1) }))}><Minus /></button><b>{settings.maxSips}</b><button className="icon-btn !h-9 !w-9" onClick={() => setSettings(s => ({ ...s, maxSips: Math.min(10, s.maxSips + 1) }))}><Plus /></button></div></div><div className="my-4 h-px bg-white/10" /><label className="flex items-center justify-between text-sm font-bold">Duração<select className="rounded-lg bg-white/10 p-2 text-xs outline-none" value={settings.roundLimit} onChange={e => setSettings(s => ({ ...s, roundLimit: Number(e.target.value) }))}><option value={10}>10 rondas</option><option value={20}>20 rondas</option><option value={30}>30 rondas</option><option value={0}>Sem limite</option></select></label></div>
+    <button className="primary-btn mt-6 flex w-full gap-2" disabled={settings.categories.length === 0 || (settings.intensity === "custom" && probabilityTotal !== 100)} onClick={start}>Iniciar jogo <SpinnerGap size={20} /></button>
   </motion.section>;
 }
 
-type GameProps={players:Player[];setPlayers:React.Dispatch<React.SetStateAction<Player[]>>;settings:Settings;setSettings:React.Dispatch<React.SetStateAction<Settings>>;round:number;setRound:React.Dispatch<React.SetStateAction<number>>;history:HistoryItem[];setHistory:React.Dispatch<React.SetStateAction<HistoryItem[]>>;activeRules:ActiveRule[];setActiveRules:React.Dispatch<React.SetStateAction<ActiveRule[]>>;stats:{questions:number;challenges:number;rules:number;duels:number};setStats:React.Dispatch<React.SetStateAction<{questions:number;challenges:number;rules:number;duels:number}>>;finish:()=>void;home:()=>void};
+type GameProps = { players: Player[]; setPlayers: React.Dispatch<React.SetStateAction<Player[]>>; settings: Settings; setSettings: React.Dispatch<React.SetStateAction<Settings>>; round: number; setRound: React.Dispatch<React.SetStateAction<number>>; history: HistoryItem[]; setHistory: React.Dispatch<React.SetStateAction<HistoryItem[]>>; activeRules: ActiveRule[]; setActiveRules: React.Dispatch<React.SetStateAction<ActiveRule[]>>; stats: { questions: number; challenges: number; rules: number; duels: number }; setStats: React.Dispatch<React.SetStateAction<{ questions: number; challenges: number; rules: number; duels: number }>>; finish: () => void; home: () => void };
 
-function Game(p:GameProps){
-  const [spinning,setSpinning]=useState(false),[rotation,setRotation]=useState(0),[card,setCard]=useState<GameCard|null>(null),[selected,setSelected]=useState<Player|null>(null),[panel,setPanel]=useState<"pause"|"history"|null>(null),[confirm,setConfirm]=useState<"restart"|"home"|null>(null);
-  const audioRef=useRef<AudioContext|null>(null); const lastIds=useMemo(()=>p.history.slice(0,2).map(h=>h.player),[p.history]);
-  const beep=()=>{if(!p.settings.sound)return;try{const Ctx=window.AudioContext||window.webkitAudioContext;const ctx=audioRef.current||new Ctx();audioRef.current=ctx;const o=ctx.createOscillator(),g=ctx.createGain();o.type="sine";o.frequency.setValueAtTime(170,ctx.currentTime);o.frequency.exponentialRampToValueAtTime(520,ctx.currentTime+.35);g.gain.setValueAtTime(.06,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.4);o.connect(g).connect(ctx.destination);o.start();o.stop(ctx.currentTime+.4)}catch{}};
-  const pickPlayer=()=>{const pool=p.players.filter(x=>!lastIds.includes(x.name));const usable=pool.length?pool:p.players;return usable[Math.floor(Math.random()*usable.length)]};
-  const makeCard=(player:Player):GameCard=>{const base:Record<Category,number>={question:25,challenge:20,drink:25,duel:8,rule:7,special:5,everyone:2,likely:5,penalty:3};const weights=p.settings.intensity==="custom"?p.settings.probabilities:base;let choices=p.settings.categories.map(c=>({c,w:weights[c]||0})).filter(x=>x.w>0);if(p.settings.intensity==="light")choices=choices.filter(x=>!["drink","penalty","rule","special","duel"].includes(x.c));if(p.settings.intensity==="chaos")choices=choices.map(x=>({...x,w:["drink","penalty","duel","rule","special"].includes(x.c)?x.w*1.5:x.w}));const total=choices.reduce((a,x)=>a+x.w,0);let r=Math.random()*total;const type=(choices.find(x=>(r-=x.w)<=0)?.c||choices[0]?.c||"challenge") as Category;const other=p.players.filter(x=>x.id!==player.id)[Math.floor(Math.random()*(p.players.length-1))];
-    if(player.sober&&(type==="drink"||type==="penalty"))return{type:"challenge",title:"Alternativa sem álcool",text:`${player.name}, ${challenges[Math.floor(Math.random()*challenges.length)].toLowerCase()}`};
-    if(type==="question")return{type,title:"Verdade à mesa",text:`${player.name}: ${questions[Math.floor(Math.random()*questions.length)]}`};
-    if(type==="challenge")return{type,title:"Desafio",text:`${player.name}, ${challenges[Math.floor(Math.random()*challenges.length)].toLowerCase()}`};
-    if(type==="likely")return{type,title:"Quem é mais provável?",text:likely[Math.floor(Math.random()*likely.length)]};
-    if(type==="duel")return{type,title:`${player.name} vs. ${other.name}`,text:`${duels[Math.floor(Math.random()*duels.length)]} Quem perder bebe ${Math.min(p.settings.maxSips,1)} gole ou faz um desafio.`};
-    if(type==="rule"){const rule=rules[Math.floor(Math.random()*rules.length)];return{type,title:"Nova regra",text:`${player.name} ativa: ${rule} Dura 3 rondas.`,rule}};
-    if(type==="special"){const s=specials[Math.floor(Math.random()*specials.length)];return{type,title:s.name,text:`${player.name}: ${s.text}`,rare:true,special:s.name}};
-    if(type==="everyone")return{type,title:"Todos jogam",text:challenges[Math.floor(Math.random()*challenges.length)]};
-    if(type==="penalty")return{type,title:"Penálti",text:`${player.name} recebe um penálti. Pode trocar imediatamente por um desafio ou opção sem álcool.`};
-    const sips=Math.ceil(Math.random()*p.settings.maxSips);const template=drinkActions[Math.floor(Math.random()*drinkActions.length)];return{type:"drink",title:"Hora do brinde",text:template.replaceAll("{player}",player.name).replaceAll("{sips}",String(sips)).replaceAll("{sipLabel}",sips===1?"gole":"goles")};
+function Game(p: GameProps) {
+  const [spinning, setSpinning] = useState(false), [rotation, setRotation] = useState(0), [card, setCard] = useState<GameCard | null>(null), [selected, setSelected] = useState<Player | null>(null), [panel, setPanel] = useState<"pause" | "history" | null>(null), [confirm, setConfirm] = useState<"restart" | "home" | null>(null);
+  const [categorySpinning, setCategorySpinning] = useState(false), [categoryRotation, setCategoryRotation] = useState(0), [selectedCategory, setSelectedCategory] = useState<Category | null>(null), [spinPhase, setSpinPhase] = useState<"player" | "category" | "done">("player");
+  const audioRef = useRef<AudioContext | null>(null); const lastIds = useMemo(() => p.history.slice(0, 2).map(h => h.player), [p.history]);
+  
+  useEffect(() => {
+    if (p.settings.sound) {
+      try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        const ctx = new Ctx();
+        audioRef.current = ctx;
+        ctx.resume();
+      } catch (e) {
+        console.log("Audio context not available");
+      }
+    }
+  }, [p.settings.sound]);
+  
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === " " && !spinning && !card && spinPhase === "player") {
+        e.preventDefault();
+        spin();
+      }
+      if (e.key === "Escape") {
+        if (panel) setPanel(null);
+        if (card) next();
+      }
+      if (e.key === "Enter" && card) {
+        next();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [spinning, card, spinPhase, panel]);
+  const beep = () => { if (!p.settings.sound) return; try { const Ctx = window.AudioContext || window.webkitAudioContext; const ctx = audioRef.current || new Ctx(); audioRef.current = ctx; const o = ctx.createOscillator(), g = ctx.createGain(); o.type = "sine"; o.frequency.setValueAtTime(170, ctx.currentTime); o.frequency.exponentialRampToValueAtTime(520, ctx.currentTime + .35); g.gain.setValueAtTime(.06, ctx.currentTime); g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .4); o.connect(g).connect(ctx.destination); o.start(); o.stop(ctx.currentTime + .4) } catch { } };
+  const pickPlayer = () => { const pool = p.players.filter(x => !lastIds.includes(x.name)); const usable = pool.length ? pool : p.players; return usable[Math.floor(Math.random() * usable.length)] };
+  const pickCategory = () => { const cats = p.settings.categories; return cats[Math.floor(Math.random() * cats.length)] };
+  const makeCard = (player: Player, category: Category): GameCard => {
+    const type = category; const other = p.players.filter(x => x.id !== player.id)[Math.floor(Math.random() * (p.players.length - 1))];
+    if (player.sober && (type === "drink" || type === "penalty")) return { type: "challenge", title: "Alternativa sem álcool", text: `${player.name}, ${challenges[Math.floor(Math.random() * challenges.length)].toLowerCase()}` };
+    if (type === "challenge") return { type, title: "Desafio", text: `${player.name}, ${challenges[Math.floor(Math.random() * challenges.length)].toLowerCase()} Completa ou bebe meio penálti.` };
+    if (type === "likely") return { type, title: "Quem é mais provável?", text: `${likely[Math.floor(Math.random() * likely.length)]} O escolhido completa ou bebe meio penálti.` };
+    if (type === "duel") return { type, title: `${player.name} vs. ${other.name}`, text: `${duels[Math.floor(Math.random() * duels.length)]} Quem perder bebe ${Math.min(p.settings.maxSips, 1)} gole ou faz um desafio.` };
+    if (type === "rule") { const rule = rules[Math.floor(Math.random() * rules.length)]; return { type, title: "Nova regra", text: `${player.name} ativa: ${rule} Dura 3 rondas.`, rule } };
+    if (type === "special") { const s = specials[Math.floor(Math.random() * specials.length)]; return { type, title: s.name, text: `${player.name}: ${s.text}`, rare: true, special: s.name } };
+    if (type === "everyone") return { type, title: "Todos jogam", text: `${challenges[Math.floor(Math.random() * challenges.length)]} Todos completam ou bebem meio penálti.` };
+    if (type === "penalty") return { type, title: "Penálti", text: `${player.name} recebe um penálti. Pode trocar imediatamente por um desafio ou opção sem álcool.` };
+    const sips = Math.ceil(Math.random() * p.settings.maxSips); const template = drinkActions[Math.floor(Math.random() * drinkActions.length)]; return { type: "drink", title: "Hora do brinde", text: template.replaceAll("{player}", player.name).replaceAll("{sips}", String(sips)).replaceAll("{sipLabel}", sips === 1 ? "gole" : "goles") };
   };
-  const spin=()=>{if(spinning||card)return;const person=pickPlayer();setSpinning(true);setSelected(person);if(p.settings.vibration&&navigator.vibrate)navigator.vibrate([35,30,55]);beep();const idx=p.players.findIndex(x=>x.id===person.id);const slice=360/p.players.length;setRotation(r=>r+1440+(360-(idx*slice+slice/2)));setTimeout(()=>{const c=makeCard(person);setCard(c);setSpinning(false);p.setPlayers(ps=>ps.map(x=>x.id===person.id?{...x,selections:x.selections+1,shields:x.shields+(c.special==="Escudo"?1:0)}:x));p.setHistory(h=>[{round:p.round,player:person.name,type:c.type,text:c.text},...h].slice(0,50));p.setStats(s=>({...s,questions:s.questions+(c.type==="question"?1:0),challenges:s.challenges+(c.type==="challenge"?1:0),rules:s.rules+(c.type==="rule"?1:0),duels:s.duels+(c.type==="duel"?1:0)}));if(c.rule)p.setActiveRules(rs=>[...rs,{text:c.rule!,remaining:3}]);if(c.rare&&p.settings.vibration&&navigator.vibrate)navigator.vibrate([80,50,80,50,120]);},p.settings.reducedMotion?300:2800)};
-  const next=()=>{setCard(null);setSelected(null);p.setActiveRules(rs=>rs.map(x=>({...x,remaining:x.remaining-1})).filter(x=>x.remaining>1));if(p.settings.roundLimit&&p.round>=p.settings.roundLimit)p.finish();else p.setRound(r=>r+1)};
-  const restart=()=>{p.setRound(1);p.setHistory([]);p.setActiveRules([]);setCard(null);setPanel(null);setConfirm(null)};
-  const colors=p.players.map((_,i)=>["#ff3dbf","#8b5cf6","#36d9ff","#ff8a3d","#65f2c2"][i%5]); const gradient=`conic-gradient(${p.players.map((_,i)=>`${colors[i]} ${i*360/p.players.length}deg ${(i+1)*360/p.players.length}deg`).join(",")})`;
-  return <motion.section initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex min-h-[calc(100dvh-40px)] flex-col"><Header action={<div className="flex gap-2"><button aria-label="Histórico" className="icon-btn" onClick={()=>setPanel("history")}><List/></button><button aria-label="Pausa" className="icon-btn" onClick={()=>setPanel("pause")}><Pause weight="fill"/></button></div>}/><div className="mt-4 flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-white/40">Ronda</p><p className="font-display text-2xl font-black">{String(p.round).padStart(2,"0")}<span className="text-white/20"> / {p.settings.roundLimit||"∞"}</span></p></div><div className="flex gap-2"><button className="pill" onClick={()=>p.setSettings(s=>({...s,sound:!s.sound}))}>{p.settings.sound?<SpeakerHigh/>:<SpeakerSlash/>}</button><button className={`pill ${p.settings.vibration?"":"opacity-40"}`} onClick={()=>p.setSettings(s=>({...s,vibration:!s.vibration}))}><Vibrate/></button></div></div>
-    {p.activeRules.length>0&&<div className="mt-4 flex gap-2 overflow-x-auto pb-1">{p.activeRules.map((r,i)=><span className="pill shrink-0 border-lime/25 text-lime" key={i}>{r.text} · {r.remaining}r</span>)}</div>}
-    <div className="my-auto py-7"><div className="relative mx-auto w-full max-w-[390px]"><div className="absolute left-1/2 top-[-11px] z-20 -translate-x-1/2 border-x-[12px] border-t-[22px] border-x-transparent border-t-white drop-shadow-lg"/><motion.div className="wheel" style={{background:gradient}} animate={{rotate:rotation}} transition={{duration:p.settings.reducedMotion?.3:2.8,ease:[.12,.64,.18,1]}}>{p.players.map((x,i)=>{const angle=(i+.5)*360/p.players.length;return <div key={x.id} className="absolute left-1/2 top-1/2 z-10 w-[42%] origin-left text-right text-[10px] font-black uppercase tracking-wide text-white drop-shadow-md" style={{transform:`rotate(${angle}deg) translateX(12%)`}}><span style={{display:"inline-block",transform:`rotate(${angle>90&&angle<270?180:0}deg)`}}>{x.name.slice(0,10)}</span></div>})}<div className="absolute left-1/2 top-1/2 z-20 grid h-[21%] w-[21%] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#0b0a16] font-display text-xl font-black">S</div></motion.div></div><p className="mt-5 text-center text-sm text-white/45">{spinning?"A roleta está a escolher…":selected?selected.name:"Quem será o próximo?"}</p></div>
-    <button className="primary-btn flex w-full gap-2 text-lg" disabled={spinning} onClick={spin}><SpinnerGap size={22} className={spinning?"animate-spin":""}/> {spinning?"A rodar…":"Rodar"}</button>
-    <AnimatePresence>{card&&<Result card={card} selected={selected} next={next} swapChallenge={()=>setCard({type:"challenge",title:"Desafio alternativo",text:`${selected?.name}, ${challenges[Math.floor(Math.random()*challenges.length)].toLowerCase()}`})}/>}</AnimatePresence>
-    <AnimatePresence>{panel&&<Panel type={panel} close={()=>setPanel(null)} history={p.history} rules={p.activeRules} settings={p.settings} setSettings={p.setSettings} requestConfirm={setConfirm}/>}</AnimatePresence>
-    <AnimatePresence>{confirm&&<Confirm text={confirm==="restart"?"Reiniciar o jogo e apagar o histórico?":"Abandonar este jogo e voltar ao início?"} cancel={()=>setConfirm(null)} confirm={confirm==="restart"?restart:p.home}/>}</AnimatePresence>
-  </motion.section>;
+  const spin = () => { if (spinning || card) return; const person = pickPlayer(); setSpinning(true); setSelected(person); setSpinPhase("player"); if (p.settings.vibration && navigator.vibrate) navigator.vibrate([35, 30, 55]); beep(); const idx = p.players.findIndex(x => x.id === person.id); const slice = 360 / p.players.length; setRotation(r => r + 1440 + ((360 - (idx + 0.5) * slice) % 360)); setTimeout(() => { setSpinning(false); setSpinPhase("category"); const cat = pickCategory(); setSelectedCategory(cat); setCategorySpinning(true); if (p.settings.vibration && navigator.vibrate) navigator.vibrate([35, 30, 55]); beep(); const catIdx = p.settings.categories.indexOf(cat); const catSlice = 360 / p.settings.categories.length; setCategoryRotation(r => r + 1440 + ((360 - (catIdx + 0.5) * catSlice) % 360)); setTimeout(() => { setCategorySpinning(false); setSpinPhase("done"); const c = makeCard(person, cat); setCard(c); p.setPlayers(ps => ps.map(x => x.id === person.id ? { ...x, selections: x.selections + 1, shields: x.shields + (c.special === "Escudo" ? 1 : 0) } : x)); p.setHistory(h => [{ round: p.round, player: person.name, type: c.type, text: c.text }, ...h].slice(0, 50)); p.setStats(s => ({ ...s, questions: s.questions + (c.type === "question" ? 1 : 0), challenges: s.challenges + (c.type === "challenge" ? 1 : 0), rules: s.rules + (c.type === "rule" ? 1 : 0), duels: s.duels + (c.type === "duel" ? 1 : 0) })); if (c.rule) p.setActiveRules(rs => [...rs, { text: c.rule!, remaining: 3 }]); if (c.rare && p.settings.vibration && navigator.vibrate) navigator.vibrate([80, 50, 80, 50, 120]); }, p.settings.reducedMotion ? 300 : 2800); }, p.settings.reducedMotion ? 300 : 2800) };
+  const next = () => { setCard(null); setSelected(null); setSelectedCategory(null); setSpinPhase("player"); p.setActiveRules(rs => rs.map(x => ({ ...x, remaining: x.remaining - 1 })).filter(x => x.remaining > 1)); if (p.settings.roundLimit && p.round >= p.settings.roundLimit) p.finish(); else p.setRound(r => r + 1) };
+  const restart = () => { p.setRound(1); p.setHistory([]); p.setActiveRules([]); setCard(null); setSelected(null); setSelectedCategory(null); setSpinPhase("player"); setPanel(null); setConfirm(null); };
+  const colors = p.players.map((_, i) => ["#ff3dbf", "#8b5cf6", "#36d9ff", "#ff8a3d", "#65f2c2"][i % 5]);
+  const gradient = `conic-gradient(${p.players.map((_, i) => `${colors[i]} ${i * 360 / p.players.length}deg ${(i + 1) * 360 / p.players.length}deg`).join(",")})`;
+  const categoryGradient = `conic-gradient(${p.settings.categories.map((c, i) => `${categoryColors[c]} ${i * 360 / p.settings.categories.length}deg ${(i + 1) * 360 / p.settings.categories.length}deg`).join(",")})`;
+  const fontSizeClass = p.settings.fontSize === "small" ? "text-sm" : p.settings.fontSize === "large" ? "text-lg" : "text-base";
+  const contrastClass = p.settings.highContrast ? "high-contrast" : "";
+  
+  return (
+    <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className={`flex min-h-[calc(100dvh-40px)] flex-col ${fontSizeClass} ${contrastClass}`}>
+      <Header action={
+        <div className="flex gap-2">
+          <button aria-label="Histórico" className="icon-btn" onClick={() => setPanel("history")}><List /></button>
+          <button aria-label="Pausa" className="icon-btn" onClick={() => setPanel("pause")}><Pause weight="fill" /></button>
+        </div>
+      } />
+      <div className="mt-4 flex items-center justify-between">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-white/40">Ronda</p>
+          <p className="font-display text-2xl font-black">{String(p.round).padStart(2, "0")}<span className="text-white/20"> / {p.settings.roundLimit || "∞"}</span></p>
+        </div>
+        <div className="flex gap-2">
+          <button className="pill" onClick={() => p.setSettings(s => ({ ...s, sound: !s.sound }))} aria-label={p.settings.sound ? "Desligar som" : "Ligar som"}>
+            {p.settings.sound ? <SpeakerHigh /> : <SpeakerSlash />}
+          </button>
+          <button className={`pill ${p.settings.vibration ? "" : "opacity-40"}`} onClick={() => p.setSettings(s => ({ ...s, vibration: !s.vibration }))} aria-label={p.settings.vibration ? "Desligar vibração" : "Ligar vibração"}>
+            <Vibrate />
+          </button>
+        </div>
+      </div>
+      {p.activeRules.length > 0 && (
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-1" role="list" aria-label="Regras ativas">
+          {p.activeRules.map((r, i) => <span className="pill shrink-0 border-lime/25 text-lime" key={i} role="listitem">{r.text} · {r.remaining}r</span>)}
+        </div>
+      )}
+      <div className="mt-4 flex items-center justify-center gap-2" role="progressbar" aria-valuenow={spinPhase === "player" ? 1 : spinPhase === "category" ? 2 : 3} aria-valuemin={1} aria-valuemax={3} aria-label="Progresso da roleta">
+        <div className={`h-2 w-8 rounded-full ${spinPhase === "player" ? "bg-pink" : "bg-white/20"}`} aria-hidden="true" />
+        <div className={`h-2 w-8 rounded-full ${spinPhase === "category" ? "bg-pink" : "bg-white/20"}`} aria-hidden="true" />
+        <div className={`h-2 w-8 rounded-full ${spinPhase === "done" ? "bg-pink" : "bg-white/20"}`} aria-hidden="true" />
+      </div>
+      {spinPhase === "player" && (
+        <div className="my-auto py-7">
+          <div className="relative mx-auto w-full max-w-[390px]">
+            <div className="absolute left-1/2 top-[-11px] z-20 -translate-x-1/2 border-x-[12px] border-t-[22px] border-x-transparent border-t-white drop-shadow-lg" aria-hidden="true"></div>
+            <motion.div className="wheel" style={{ background: gradient }} animate={{ rotate: rotation }} transition={{ duration: p.settings.reducedMotion ? .3 : 2.8, ease: [.12, .64, .18, 1] }} role="img" aria-label={`Roleta de jogadores. ${spinning ? "A girar" : selected ? `Selecionado: ${selected.name}` : "Pronta para girar"}`}>
+              {p.players.map((x, i) => {
+                const angle = (i + .5) * 360 / p.players.length;
+                const shouldRotate = angle > 90 && angle < 270;
+                return <div key={x.id} className="absolute left-1/2 top-1/2 z-10 w-[42%] origin-left text-right text-[10px] font-black uppercase tracking-wide text-white drop-shadow-md" style={{ transform: `rotate(${angle}deg) translateX(12%)` }}><span style={{ display: "inline-block", transform: shouldRotate ? "rotate(180deg)" : "none" }}>{x.name.slice(0, 10)}</span></div>;
+              })}
+              <div className="absolute left-1/2 top-1/2 z-20 grid h-[21%] w-[21%] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#0b0a16] font-display text-xl font-black" aria-hidden="true">S</div>
+            </motion.div>
+          </div>
+          <p className="mt-5 text-center text-sm text-white/45" aria-live="polite">{spinning ? "A roleta está a escolher…" : selected ? selected.name : "Quem será o próximo?"}</p>
+        </div>
+      )}
+      {spinPhase === "category" && (
+        <div className="my-auto py-7">
+          <div className="relative mx-auto w-full max-w-[390px]">
+            <div className="absolute left-1/2 top-[-11px] z-20 -translate-x-1/2 border-x-[12px] border-t-[22px] border-x-transparent border-t-white drop-shadow-lg" aria-hidden="true"></div>
+            <motion.div className="wheel" style={{ background: categoryGradient }} animate={{ rotate: categoryRotation }} transition={{ duration: p.settings.reducedMotion ? .3 : 2.8, ease: [.12, .64, .18, 1] }} role="img" aria-label={`Roleta de categorias. ${categorySpinning ? "A girar" : selectedCategory ? `Selecionado: ${categoryLabels[selectedCategory]}` : "Pronta para girar"}`}>
+              {p.settings.categories.map((c, i) => {
+                const angle = (i + .5) * 360 / p.settings.categories.length;
+                const shouldRotate = angle > 90 && angle < 270;
+                return <div key={c} className="absolute left-1/2 top-1/2 z-10 w-[42%] origin-left text-right text-[10px] font-black uppercase tracking-wide text-white drop-shadow-md" style={{ transform: `rotate(${angle}deg) translateX(12%)` }}><span style={{ display: "inline-block", transform: shouldRotate ? "rotate(180deg)" : "none" }}>{categoryLabels[c].slice(0, 10)}</span></div>;
+              })}
+              <div className="absolute left-1/2 top-1/2 z-20 grid h-[21%] w-[21%] -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#0b0a16] font-display text-xl font-black" aria-hidden="true">S</div>
+            </motion.div>
+          </div>
+          <p className="mt-5 text-center text-sm text-white/45" aria-live="polite">{categorySpinning ? "A roleta está a escolher…" : selectedCategory ? categoryLabels[selectedCategory] : "Qual será o modo?"}</p>
+        </div>
+      )}
+      {spinPhase === "player" && (
+        <button className="primary-btn flex w-full gap-2 text-lg" disabled={spinning} onClick={spin} aria-label="Rodar roleta">
+          <SpinnerGap size={22} className={spinning ? "animate-spin" : ""} /> {spinning ? "A rodar…" : "Rodar"}
+        </button>
+      )}
+      <AnimatePresence>{card && <Result card={card} selected={selected} next={next} swapChallenge={() => setCard({ type: "challenge", title: "Desafio alternativo", text: `${selected?.name}, ${challenges[Math.floor(Math.random() * challenges.length)].toLowerCase()}` })} />}</AnimatePresence>
+      <AnimatePresence>{panel && <Panel type={panel} close={() => setPanel(null)} history={p.history} rules={p.activeRules} settings={p.settings} setSettings={p.setSettings} requestConfirm={setConfirm} />}</AnimatePresence>
+      <AnimatePresence>{confirm && <Confirm text={confirm === "restart" ? "Reiniciar o jogo e apagar o histórico?" : "Abandonar este jogo e voltar ao início?"} cancel={() => setConfirm(null)} confirm={confirm === "restart" ? restart : p.home} />}</AnimatePresence>
+    </motion.section>
+  );
 }
 
 declare global { interface Window { webkitAudioContext: typeof AudioContext } }
 
-function Result({card,selected,next,swapChallenge}:{card:GameCard;selected:Player|null;next:()=>void;swapChallenge:()=>void}){const [done,setDone]=useState(false);return <motion.div className="modal-backdrop" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><motion.div className="sheet text-center" initial={{scale:.9,y:30}} animate={{scale:1,y:0}}><div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl text-3xl shadow-neon" style={{background:`${categoryColors[card.type]}20`,color:categoryColors[card.type]}}>{card.rare?"✦":card.type==="question"?"?":card.type==="challenge"?"⚡":card.type==="duel"?"⚔":"●"}</div>{card.rare&&<span className="pill mt-4 border-yellow-300/30 text-yellow-300">CARTA RARA</span>}<p className="mt-5 text-xs font-black uppercase tracking-[.18em]" style={{color:categoryColors[card.type]}}>{categoryLabels[card.type]}</p><h2 className="mt-2 font-display text-3xl font-black">{card.title}</h2><p className="mt-4 text-lg leading-relaxed text-white/70">{card.text}</p>{selected?.sober&&<p className="mt-3 text-xs text-lime">Modo sem álcool ativo</p>}<div className="mt-7 grid grid-cols-2 gap-2"><button className={`secondary-btn ${done?"border-lime/40 text-lime":""}`} onClick={()=>setDone(!done)}><Check className="mr-2"/> {done?"Cumprido!":"Cumprido"}</button><button className="secondary-btn" onClick={swapChallenge}>Trocar desafio</button><button className="secondary-btn text-white/50" onClick={next}>Saltar</button><button className="primary-btn flex" onClick={next}>Próxima ronda</button></div></motion.div></motion.div>}
+function Result({ card, selected, next, swapChallenge }: { card: GameCard; selected: Player | null; next: () => void; swapChallenge: () => void }) { 
+  const [done, setDone] = useState(false);
+  const shareCard = () => {
+    const shareText = `${selected?.name} recebeu: ${card.title} - ${card.text}`;
+    navigator.share?.({ title: "Spin & Sip", text: shareText }).catch(() => {});
+  };
+  
+  return (
+    <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div 
+        className="sheet text-center" 
+        initial={{ scale: .9, y: 30 }} 
+        animate={{ scale: 1, y: 0 }}
+        transition={{ type: "spring", damping: 20, stiffness: 300 }}
+      >
+        <motion.div 
+          className="mx-auto grid h-16 w-16 place-items-center rounded-2xl text-3xl shadow-neon" 
+          style={{ background: `${categoryColors[card.type]}20`, color: categoryColors[card.type] }}
+          animate={card.rare ? { 
+            scale: [1, 1.2, 1], 
+            rotate: [0, 10, -10, 0],
+            boxShadow: [
+              "0 0 20px rgba(255, 215, 0, 0.3)",
+              "0 0 40px rgba(255, 215, 0, 0.6)",
+              "0 0 20px rgba(255, 215, 0, 0.3)"
+            ]
+          } : {}}
+          transition={{ duration: 0.6, repeat: card.rare ? Infinity : 0, repeatDelay: 2 }}
+        >
+          {card.rare ? "✦" : card.type === "challenge" ? "⚡" : card.type === "duel" ? "⚔" : "●"}
+        </motion.div>
+        {card.rare && (
+          <motion.span 
+            className="pill mt-4 border-yellow-300/30 text-yellow-300"
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            CARTA RARA
+          </motion.span>
+        )}
+        <motion.p 
+          className="mt-5 text-xs font-black uppercase tracking-[.18em]" 
+          style={{ color: categoryColors[card.type] }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1 }}
+        >
+          {categoryLabels[card.type]}
+        </motion.p>
+        <motion.h2 
+          className="mt-2 font-display text-3xl font-black"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          {card.title}
+        </motion.h2>
+        <motion.p 
+          className="mt-4 text-lg leading-relaxed text-white/70"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          {card.text}
+        </motion.p>
+        {selected?.sober && <p className="mt-3 text-xs text-lime">Modo sem álcool ativo</p>}
+        <motion.div 
+          className="mt-7 grid grid-cols-2 gap-2"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+        >
+          <button className={`secondary-btn ${done ? "border-lime/40 text-lime" : ""}`} onClick={() => setDone(!done)}>
+            <Check className="mr-2" /> {done ? "Cumprido!" : "Cumprido"}
+          </button>
+          <button className="secondary-btn" onClick={swapChallenge}>Trocar desafio</button>
+          <button className="secondary-btn text-white/50" onClick={next}>Saltar</button>
+          <button className="secondary-btn" onClick={shareCard}><ShareNetwork className="mr-2" /> Partilhar</button>
+          <button className="primary-btn flex col-span-2" onClick={next}>Próxima ronda</button>
+        </motion.div>
+      </motion.div>
+    </motion.div>
+  );
+}
 
-function Panel({type,close,history,rules,settings,setSettings,requestConfirm}:{type:"pause"|"history";close:()=>void;history:HistoryItem[];rules:ActiveRule[];settings:Settings;setSettings:React.Dispatch<React.SetStateAction<Settings>>;requestConfirm:(x:"restart"|"home")=>void}){return <motion.div className="modal-backdrop" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><motion.div className="sheet" initial={{y:30}} animate={{y:0}}><div className="flex items-center justify-between"><h2 className="font-display text-2xl font-black">{type==="pause"?"Jogo em pausa":"Histórico"}</h2><button className="icon-btn" onClick={close}><X/></button></div>{type==="pause"?<div className="mt-6 space-y-2"><button className="primary-btn flex w-full" onClick={close}>Continuar jogo</button><button className="secondary-btn w-full justify-between" onClick={()=>setSettings(s=>({...s,sound:!s.sound}))}><span className="flex items-center gap-2"><SpeakerHigh/> Som</span><span>{settings.sound?"Ligado":"Desligado"}</span></button><button className="secondary-btn w-full justify-between" onClick={()=>setSettings(s=>({...s,vibration:!s.vibration}))}><span className="flex items-center gap-2"><Vibrate/> Vibração</span><span>{settings.vibration?"Ligada":"Desligada"}</span></button><button className="secondary-btn w-full justify-between" onClick={()=>setSettings(s=>({...s,reducedMotion:!s.reducedMotion}))}><span className="flex items-center gap-2"><GearSix/> Reduzir animações</span><span>{settings.reducedMotion?"Sim":"Não"}</span></button><button className="secondary-btn w-full text-white/55" onClick={()=>requestConfirm("restart")}>Reiniciar jogo</button><button className="secondary-btn w-full text-pink" onClick={()=>requestConfirm("home")}>Voltar ao início</button></div>:<><div className="mt-5">{rules.length>0&&<div className="mb-5"><p className="mb-2 text-xs font-bold uppercase text-lime">Regras ativas</p>{rules.map((r,i)=><div key={i} className="pill mr-2">{r.text} · {r.remaining}r</div>)}</div>}<div className="max-h-[55dvh] space-y-2 overflow-auto">{history.length===0?<p className="py-12 text-center text-sm text-white/40">Ainda não há ações.</p>:history.map((h,i)=><div key={i} className="rounded-xl bg-white/[.05] p-3"><div className="flex justify-between text-[10px] uppercase text-white/35"><span>{categoryLabels[h.type]}</span><span>Ronda {h.round}</span></div><p className="mt-1 text-sm font-semibold">{h.player}</p><p className="mt-1 line-clamp-2 text-xs text-white/50">{h.text}</p></div>)}</div></div></>}</motion.div></motion.div>}
+function Panel({ type, close, history, rules, settings, setSettings, requestConfirm }: { type: "pause" | "history"; close: () => void; history: HistoryItem[]; rules: ActiveRule[]; settings: Settings; setSettings: React.Dispatch<React.SetStateAction<Settings>>; requestConfirm: (x: "restart" | "home") => void }) { return <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><motion.div className="sheet" initial={{ y: 30 }} animate={{ y: 0 }}><div className="flex items-center justify-between"><h2 className="font-display text-2xl font-black">{type === "pause" ? "Jogo em pausa" : "Histórico"}</h2><button className="icon-btn" onClick={close}><X /></button></div>{type === "pause" ? <div className="mt-6 space-y-2"><button className="primary-btn flex w-full" onClick={close}>Continuar jogo</button><button className="secondary-btn w-full justify-between" onClick={() => setSettings(s => ({ ...s, sound: !s.sound }))}><span className="flex items-center gap-2"><SpeakerHigh /> Som</span><span>{settings.sound ? "Ligado" : "Desligado"}</span></button><button className="secondary-btn w-full justify-between" onClick={() => setSettings(s => ({ ...s, vibration: !s.vibration }))}><span className="flex items-center gap-2"><Vibrate /> Vibração</span><span>{settings.vibration ? "Ligada" : "Desligada"}</span></button><button className="secondary-btn w-full justify-between" onClick={() => setSettings(s => ({ ...s, reducedMotion: !s.reducedMotion }))}><span className="flex items-center gap-2"><GearSix /> Reduzir animações</span><span>{settings.reducedMotion ? "Sim" : "Não"}</span></button><button className="secondary-btn w-full justify-between" onClick={() => setSettings(s => ({ ...s, highContrast: !s.highContrast }))}><span className="flex items-center gap-2"><Eye /> Alto contraste</span><span>{settings.highContrast ? "Sim" : "Não"}</span></button><button className="secondary-btn w-full justify-between" onClick={() => setSettings(s => ({ ...s, fontSize: s.fontSize === "small" ? "normal" : s.fontSize === "normal" ? "large" : "small" }))}><span className="flex items-center gap-2"><TextAa /> Tamanho de texto</span><span>{settings.fontSize === "small" ? "Pequeno" : settings.fontSize === "normal" ? "Normal" : "Grande"}</span></button><button className="secondary-btn w-full text-white/55" onClick={() => requestConfirm("restart")}>Reiniciar jogo</button><button className="secondary-btn w-full text-pink" onClick={() => requestConfirm("home")}>Voltar ao início</button></div> : <><div className="mt-5">{rules.length > 0 && <div className="mb-5"><p className="mb-2 text-xs font-bold uppercase text-lime">Regras ativas</p>{rules.map((r, i) => <div key={i} className="pill mr-2">{r.text} · {r.remaining}r</div>)}</div>}<div className="max-h-[55dvh] space-y-2 overflow-auto">{history.length === 0 ? <p className="py-12 text-center text-sm text-white/40">Ainda não há ações.</p> : history.map((h, i) => <div key={i} className="rounded-xl bg-white/[.05] p-3"><div className="flex justify-between text-[10px] uppercase text-white/35"><span>{categoryLabels[h.type]}</span><span>Ronda {h.round}</span></div><p className="mt-1 text-sm font-semibold">{h.player}</p><p className="mt-1 line-clamp-2 text-xs text-white/50">{h.text}</p></div>)}</div></div></>}</motion.div></motion.div> }
 
-function Confirm({text,cancel,confirm}:{text:string;cancel:()=>void;confirm:()=>void}){return <motion.div className="modal-backdrop !z-50" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}><div className="sheet text-center"><HandPalm className="mx-auto text-pink" size={42}/><h2 className="mt-4 font-display text-xl font-black">Tens a certeza?</h2><p className="mt-2 text-sm text-white/55">{text}</p><div className="mt-6 grid grid-cols-2 gap-2"><button className="secondary-btn" onClick={cancel}>Cancelar</button><button className="primary-btn flex" onClick={confirm}>Confirmar</button></div></div></motion.div>}
+function Confirm({ text, cancel, confirm }: { text: string; cancel: () => void; confirm: () => void }) { return <motion.div className="modal-backdrop !z-50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><div className="sheet text-center"><HandPalm className="mx-auto text-pink" size={42} /><h2 className="mt-4 font-display text-xl font-black">Tens a certeza?</h2><p className="mt-2 text-sm text-white/55">{text}</p><div className="mt-6 grid grid-cols-2 gap-2"><button className="secondary-btn" onClick={cancel}>Cancelar</button><button className="primary-btn flex" onClick={confirm}>Confirmar</button></div></div></motion.div> }
 
-function Summary({players,round,stats,again,edit,home}:{players:Player[];round:number;stats:{questions:number;challenges:number;rules:number;duels:number};again:()=>void;edit:()=>void;home:()=>void}){const winner=[...players].sort((a,b)=>b.selections-a.selections)[0];const shield=[...players].sort((a,b)=>b.shields-a.shields)[0];const share=()=>navigator.share?.({title:"Spin & Sip",text:`${winner?.name} foi Rei da Roleta após ${round} rondas!`}).catch(()=>{});return <motion.section initial={{opacity:0}} animate={{opacity:1}} className="min-h-[calc(100dvh-40px)]"><Header/><div className="pt-10 text-center"><div className="mx-auto grid h-24 w-24 place-items-center rounded-[30px] bg-gradient-to-br from-yellow-300 via-pink to-violet text-5xl shadow-neon">♛</div><p className="mt-6 text-xs font-black uppercase tracking-[.24em] text-pink">Fim de jogo</p><h1 className="mt-2 font-display text-4xl font-black">Que noite!</h1><p className="mt-2 text-white/50">{round} rondas de pura diversão.</p></div><div className="glass mt-8 rounded-3xl p-5"><p className="text-xs font-bold uppercase text-white/35">Rei da Roleta</p><div className="mt-3 flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-pink/15 font-display text-xl font-black text-pink">{winner?.name[0]}</div><div><p className="font-display text-xl font-black">{winner?.name}</p><p className="text-xs text-white/40">Selecionado {winner?.selections} vezes</p></div></div>{shield?.shields>0&&<p className="mt-4 text-xs text-electric"><ShieldCheck className="mr-1 inline"/> Imune oficial: {shield.name}</p>}</div><div className="mt-3 grid grid-cols-2 gap-3">{[["Perguntas",stats.questions],["Desafios",stats.challenges],["Regras",stats.rules],["Duelos",stats.duels]].map(([x,n])=><div className="glass rounded-2xl p-4" key={x}><p className="font-display text-2xl font-black">{n}</p><p className="text-xs text-white/40">{x}</p></div>)}</div><div className="mt-6 space-y-2"><button className="primary-btn flex w-full" onClick={again}>Jogar novamente</button><button className="secondary-btn w-full" onClick={edit}><User className="mr-2"/> Alterar jogadores</button><button className="secondary-btn w-full" onClick={share}><ShareNetwork className="mr-2"/> Partilhar resultado</button><button className="min-h-11 w-full text-sm text-white/40" onClick={home}>Voltar ao início</button></div></motion.section>}
+function Summary({ players, round, stats, again, edit, home }: { players: Player[]; round: number; stats: { questions: number; challenges: number; rules: number; duels: number }; again: () => void; edit: () => void; home: () => void }) { const winner = [...players].sort((a, b) => b.selections - a.selections)[0]; const shield = [...players].sort((a, b) => b.shields - a.shields)[0]; const share = () => navigator.share?.({ title: "Spin & Sip", text: `${winner?.name} foi Rei da Roleta após ${round} rondas!` }).catch(() => { }); return <motion.section initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-[calc(100dvh-40px)]"><Header /><div className="pt-10 text-center"><div className="mx-auto grid h-24 w-24 place-items-center rounded-[30px] bg-gradient-to-br from-yellow-300 via-pink to-violet text-5xl shadow-neon">♛</div><p className="mt-6 text-xs font-black uppercase tracking-[.24em] text-pink">Fim de jogo</p><h1 className="mt-2 font-display text-4xl font-black">Que noite!</h1><p className="mt-2 text-white/50">{round} rondas de pura diversão.</p></div><div className="glass mt-8 rounded-3xl p-5"><p className="text-xs font-bold uppercase text-white/35">Rei da Roleta</p><div className="mt-3 flex items-center gap-3"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-pink/15 font-display text-xl font-black text-pink">{winner?.name[0]}</div><div><p className="font-display text-xl font-black">{winner?.name}</p><p className="text-xs text-white/40">Selecionado {winner?.selections} vezes</p></div></div>{shield?.shields > 0 && <p className="mt-4 text-xs text-electric"><ShieldCheck className="mr-1 inline" /> Imune oficial: {shield.name}</p>}</div><div className="mt-3 grid grid-cols-2 gap-3">{[["Perguntas", stats.questions], ["Desafios", stats.challenges], ["Regras", stats.rules], ["Duelos", stats.duels]].map(([x, n]) => <div className="glass rounded-2xl p-4" key={x}><p className="font-display text-2xl font-black">{n}</p><p className="text-xs text-white/40">{x}</p></div>)}</div><div className="mt-6 space-y-2"><button className="primary-btn flex w-full" onClick={again}>Jogar novamente</button><button className="secondary-btn w-full" onClick={edit}><User className="mr-2" /> Alterar jogadores</button><button className="secondary-btn w-full" onClick={share}><ShareNetwork className="mr-2" /> Partilhar resultado</button><button className="min-h-11 w-full text-sm text-white/40" onClick={home}>Voltar ao início</button></div></motion.section> }
